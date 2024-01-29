@@ -24,9 +24,5 @@ h1 {
 }
 
 export default {
-    files,
-    async getFile(path) {
-        console.log(path)
-        return await fetch("/2.png"); // Response
-    }
+    files
 }

@@ -16,6 +16,7 @@ import { join, dirname } from './utils'
 
 const modulesKey = `__sfc_modules__`
 const exportKey = `__sfc_export__`
+const staticImportKey = `__static_import__`
 const dynamicImportKey = `__dynamic_import__`
 const moduleKey = `__module__`
 
@@ -41,6 +42,9 @@ async function processFile(
     seen: Set<File>,
     callback: (type: 'js' | 'css', src: string) => Promise<any>
 ) {
+    if (!file) {
+        throw new Error("file is empty")
+    }
     if (seen.has(file)) {
         return []
     }
@@ -101,8 +105,14 @@ async function processModule(store: Store, src: string, filename: string) {
 
     const idToImportMap = new Map<string, string>()
     const declaredConst = new Set<string>()
-    const importedFiles = new Set<string>()
-    const importToIdMap = new Map<string, string>()
+    const importedFiles = {
+        local: new Set<string>(),
+        other: new Set<string>()
+    }
+    const importToIdMap = {
+        local: new Map<string, string>(),
+        other: new Map<string, string>()
+    }
 
     function resolveImport(raw: string): string | undefined {
         const files = store.files
@@ -115,23 +125,42 @@ async function processModule(store: Store, src: string, filename: string) {
     }
 
     async function defineImport(node: Node, source: string, pathname: string) {
-        const resolvedPath = join(dirname(pathname), source)
-        let filename = resolveImport(resolvedPath)
-        if (!filename) {
-            filename = resolvedPath
-            await store.getFile(filename, source)
+        function addImport(importType: 'local' | 'other', name: string) {
+            if (importedFiles[importType].has(name)) {
+                return importToIdMap[importType].get(name)!
+            }
+            importedFiles[importType].add(name)
+            const id = `__sfc_${importType}_import_${importedFiles[importType].size}__`
+            importToIdMap[importType].set(name, id)
+            return id;
         }
-        if (importedFiles.has(filename)) {
-            return importToIdMap.get(filename)!
+        if (source.startsWith('./') || source.startsWith('../')) {
+            const resolvedPath = join(dirname(pathname), source)
+            let filename = resolveImport(resolvedPath)
+            if (!filename) {
+                filename = resolvedPath
+                await store.getFile(filename, source)
+            }
+            if (importedFiles['local'].has(filename)) {
+                return importToIdMap['local'].get(filename)!
+            }
+            const id = addImport('local', filename)
+            s.appendLeft(
+                node.start!,
+                `const ${id} = ${modulesKey}[${JSON.stringify(filename)}]\n`,
+            )
+            return id;
         }
-        importedFiles.add(filename)
-        const id = `__import_${importedFiles.size}__`
-        importToIdMap.set(filename, id)
+        if (importedFiles['other'].has(source)) {
+            return importToIdMap['other'].get(source)!
+        }
+        const id = addImport('other', source)
         s.appendLeft(
             node.start!,
-            `const ${id} = ${modulesKey}[${JSON.stringify(filename)}]\n`,
+            `const ${id} = await ${staticImportKey}(${JSON.stringify(source)})\n`,
         )
         return id
+        
     }
 
     function defineExport(name: string, local = name) {
@@ -140,7 +169,7 @@ async function processModule(store: Store, src: string, filename: string) {
 
     // 0. instantiate module
     s.prepend(
-        `\n\nexport default function(${modulesKey}, ${exportKey}, ${dynamicImportKey}) {\n` +
+        `\n\nexport default async function(${modulesKey}, ${exportKey}, ${dynamicImportKey}, ${staticImportKey}) {\n` +
         `const ${moduleKey} = ${modulesKey}[${JSON.stringify(filename)}] = { [Symbol.toStringTag]: "Module" }\n\n`,
     )
 
@@ -150,27 +179,21 @@ async function processModule(store: Store, src: string, filename: string) {
         // import { baz } from 'foo' --> baz -> __import_foo__.baz
         // import * as ok from 'foo' --> ok -> __import_foo__
         if (node.type === 'ImportDeclaration') {
-            const source = node.source.value
-            if (source.startsWith('./') || source.startsWith('../')) {
-                const importId = await defineImport(node, node.source.value, filename)
-                for (const spec of node.specifiers) {
-                    if (spec.type === 'ImportSpecifier') {
-                        idToImportMap.set(
-                            spec.local.name,
-                            `${importId}.${(spec.imported as Identifier).name}`,
-                        )
-                    } else if (spec.type === 'ImportDefaultSpecifier') {
-                        idToImportMap.set(spec.local.name, `${importId}.default`)
-                    } else {
-                        // namespace specifier
-                        idToImportMap.set(spec.local.name, importId)
-                    }
+            const importId = await defineImport(node, node.source.value, filename)
+            for (const spec of node.specifiers) {
+                if (spec.type === 'ImportSpecifier') {
+                    idToImportMap.set(
+                        spec.local.name,
+                        `${importId}.${(spec.imported as Identifier).name}`,
+                    )
+                } else if (spec.type === 'ImportDefaultSpecifier') {
+                    idToImportMap.set(spec.local.name, `${importId}.default`)
+                } else {
+                    // namespace specifier
+                    idToImportMap.set(spec.local.name, importId)
                 }
-                s.remove(node.start!, node.end!)
-            } else {
-                s.prepend(src.slice(node.start!, node.end!) + '\n')
-                s.remove(node.start!, node.end!)
             }
+            s.remove(node.start!, node.end!)
         }
     }
 
@@ -305,7 +328,7 @@ async function processModule(store: Store, src: string, filename: string) {
 
     return {
         code: s.toString(),
-        importedFiles,
+        importedFiles: importedFiles['local'],
         hasDynamicImport,
     }
 }

@@ -8,6 +8,7 @@ import { Component } from 'vue'
 import * as vue from 'vue'
 
 import 'systemjs'
+import 'systemjs-babel'
 
 export interface File {
     filename: string;
@@ -16,12 +17,12 @@ export interface File {
     mimetype?: string;
 }
 
-import 'systemjs-babel'
+
 
 async function runInModule(src: string) {
     const blob = new Blob([src], { type: 'text/javascript' });
     const blobUrl = URL.createObjectURL(blob);
-    const module = await System.import(blobUrl)
+    const module = await import(/* @vite-ignore */blobUrl)
     return module
 }
 
@@ -199,21 +200,24 @@ export async function defineSFC(
         if (type === 'css') css.push(src)
         else {
             const defineModule = await runInModule(src)
-            defineModule.default(
+            await defineModule.default(
                 modules,
                 (mod: any, key: string, get: any) => {
                     Object.defineProperty(mod, key, { enumerable: true, configurable: true, get })
                 },
-                (key: string) => Promise.resolve(modules[key])
+                (key: string) => Promise.resolve(modules[key]),
+                async (moduleName: string) => {
+                    return await System.import(moduleName)
+                }
             )
         }
     })
 
-    const styles = css.reverse().map((s: string) => `<style data-css-sfc>${s}</style>`).join('\\n')
+    const styles = css.reverse().join('\\n')
     if (options?.renderStyles) await options?.renderStyles(styles)
     else {
         document.querySelectorAll('style[data-css-sfc]').forEach(el => el.remove())
-        document.head.insertAdjacentHTML('beforeend', styles)
+        document.head.insertAdjacentHTML('beforeend', `<style data-css-sfc>${styles}</style>`)
     }
 
     return modules[store.mainFile].default as Component
