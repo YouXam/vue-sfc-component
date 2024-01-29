@@ -25,10 +25,10 @@ export async function compileModules(store: Store, callback: (type: 'js' | 'css'
 
 
     for (const filename in store.files) {
-        if (store.files[filename].language === 'css') {
+        if (store.files[filename].data.language === 'css') {
             const file = store.files[filename]
             if (!seen.has(file)) {
-                await callback('css', file.compiled.css)
+                await callback('css', file.compiled.css || '')
             }
         }
     }
@@ -51,7 +51,7 @@ async function processFile(
         hasDynamicImport,
     } = await processModule(
         store,
-        file.compiled.js,
+        file.compiled.js || '',
         file.filename,
     )
     await processChildFiles(

@@ -14,6 +14,7 @@ export function join(...paths: string[]) {
     return newParts.join("/") || (newParts.length ? "/" : ".");
 }
 
+
 export function dirname(path: string) {
     return join(path, "..");
 }

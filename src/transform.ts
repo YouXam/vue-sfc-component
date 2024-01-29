@@ -1,4 +1,4 @@
-import type { File, Store } from './store'
+import  { type File, type Store } from './store'
 import type {
   BindingMetadata,
   CompilerOptions,
@@ -18,12 +18,33 @@ async function transformTS(src: string) {
 
 export async function compileFile(
   store: Store,
-  { filename, content, compiled, finished }: File
+  file: File
 ): Promise<(string | Error)[]> {
+
+  if (!file.isKnown()) {
+    if (file.data.content instanceof URL) {
+      file.compiled.js = `export default ${JSON.stringify(file.data.content)}`
+      return []
+    }
+    const blob = new Blob([file.data.content], { type: 'text/javascript' })
+    const url = URL.createObjectURL(blob)
+    file.compiled.js = `export default ${JSON.stringify(url)}`
+    return []
+  }
+
+  let { data: { content }, filename,  compiled, finished } = file
+
   const setFinished = (errors: (string | Error)[]) => {
-    store.files[filename].finished = true
+    file.finished = true
     return errors
   }
+
+  if (content instanceof URL) {
+    const res = await fetch(content)
+    content = await res.text()
+  }
+
+  
   if (finished) {
     return []
   }
@@ -31,20 +52,20 @@ export async function compileFile(
     return setFinished([])
   }
 
-  if (store.files[filename].language === 'css') {
+  if (file.data.language === 'css') {
     compiled.css = content
     return setFinished([])
   }
 
-  if (store.files[filename].language.endsWith('script')) {
-    if (store.files[filename].language === 'typescript') {
+  if (file.data.language === 'javascript' || file.data.language === 'typescript') {
+    if (file.data.language === 'typescript') {
       content = await transformTS(content)
     }
     compiled.js = content
     return setFinished([])
   }
 
-  if (store.files[filename].language === 'json') {
+  if (file.data.language === 'json') {
     let parsed
     try {
       parsed = JSON.parse(content)
@@ -56,9 +77,6 @@ export async function compileFile(
     return setFinished([])
   }
 
-  if (store.files[filename].language !== 'vue') {
-    return setFinished([])
-  }
 
   const id = hashId(filename)
   const { errors, descriptor } = store.compiler.parse(content, {

@@ -137,6 +137,8 @@ It's also important to remember that if a URL is specified in the `imports` but 
 
 #### 2. Multi-File Support
 
+##### 2.1. `files` and `getFile`
+
 `vue-sfc-component` offers the flexibility to develop components using multiple files, supporting various file types such as `.vue`, `.js`, `.ts`, `.css`, and `.json`. This feature allows you to structure your component just like in a standard Vue project, providing a familiar and intuitive development experience.
 
 Please note that using `.css` files will apply styles globally, which might inadvertently affect other components. It's recommended to use `scoped` styles to prevent such style contamination.
@@ -169,6 +171,48 @@ loadSFCModule('App.vue', {
 
 These approaches can be mixed. The `files` array is checked first for the specified files, and if not found, the `getFile` callback is used to retrieve the file content.
 
+###### Handling Different Content Types in `files` and `getFile`
+
+The `vue-sfc-component` library is designed to handle a versatile range of content types for your components. When specifying the `content` in `files` or returning a value from `getFile`, you can use various types such as `string`, `ArrayBuffer`, `Blob`, `Response`, or even a `URL`.
+
+Here's how these types are handled:
+
+- **`String`, `ArrayBuffer`, `Blob`, and `Response`**: These types are directly used as the content of your component files. They provide flexibility in how you define or fetch your component's content.
+
+- **URL**: When a `URL` type is used, especially for file types like `vue`, `css`, `javascript`, `typescript`, or `json`, the library will utilize `fetch` to retrieve the content from the specified URL. This is particularly useful for loading content from external sources or APIs.
+
+  ```js
+  loadSFCModule('App.vue', {
+      files: [
+          {
+              filename: 'App.vue',
+              content: new URL('http://example.com/path/to/your/App.vue')
+          }
+          // ... other files
+      ]
+  });
+  ```
+
+  For other file types not listed above, the provided URL will be used directly. See more details in the [Other Files](#225-other-files) section.
+
+##### 2.2 File Resolution
+
+###### 2.2.1 Vue SFC
+
+You can directly import Vue SFCs in your components. For instance:
+
+```html
+<script setup>
+import Foo from './Foo.vue'
+</script>
+```
+
+This allows you to use other Vue components seamlessly within your SFC.
+
+###### 2.2.2 js/ts
+
+Imports and exports for JavaScript and TypeScript files follow the ECMAScript module (ESM) standard.
+
 When using the `files` parameter with `.ts` or `.js` files, you can omit the file extension during imports. For example:
 
 ```html
@@ -180,6 +224,49 @@ import foo from './foo'
 The resolution order is: original filename > `foo.ts` > `foo.js`.
 
 However, when using the `getFile` approach, you must specify the file extension. This ensures that the correct file type is loaded and processed as expected.
+
+###### 2.2.3 css
+
+*TBD*
+
+###### 2.2.4 json
+
+JSON files are imported as objects, allowing you to use JSON data directly within your SFC.
+
+###### 2.2.5 Other files
+
+Other file types are exported as strings representing the URL of the file.
+
+The type of URL depends on the type of `content` provided. If `string`, `ArrayBuffer`, `Blob`, or `Response` is passed, it will be a `Blob URL`; if a `URL` type is provided, it will be that specific `URL`.
+
+For example:
+
+```html
+<script setup>
+import a from './a.png' // 'a' is a Blob URL
+import b from './b.png' // 'b' is new URL('./b.png', window.location.href).toString()
+</script>
+
+<template>
+    <img :src="a">
+    <img :src="b">
+</template>
+```
+
+```js
+loadSFCModule('App.vue', files, {
+    async getFile(path) {
+        if (path === './a.png') {
+            return await fetch(path);
+        } else if (path === './b.png') {
+            return new URL(path, window.location.href);
+        }
+        throw new Error('File not found');
+    }
+});
+```
+
+These functionalities provide a comprehensive and flexible system for handling various file types in Vue SFCs, enhancing the capability of your Vue applications.
 
 
 #### 3. Rendering Styles
@@ -222,11 +309,13 @@ If you have specific requirements that necessitate modifying file contents befor
 loadSFCModule('App.vue', {
     files,
     fileConvertRule(file) {
-        console.log(file.filename); // Log the filename
-        console.log(file.content); // Log the current content
+        console.log(file.filename); 
+        console.log(file.content);
         console.log(file.language); // 'vue' | 'javascript' | 'typescript' | 'json' | 'css' | 'other'
+        console.log(file.mimetype); // Only present when file.language is 'other'
         file.content = "xxx"; // Modify the file content
-        file.language = 'vue'; // Treat as a Vue file, 'other' is not a valid assignment here
+        file.language = 'vue'; // Treat as a Vue file
+        // file.mime = 'text/plain'; // Set MIME type for 'other' language files
     }
 });
 ```

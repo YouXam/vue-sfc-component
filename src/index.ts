@@ -11,8 +11,9 @@ import 'systemjs'
 
 export interface File {
     filename: string;
-    content: string;
+    content: string | ArrayBuffer | URL;
     language: string;
+    mimetype?: string;
 }
 
 import 'systemjs-babel'
@@ -77,13 +78,30 @@ function registerModulesWithSystemJS(importMap: ImportMap) {
 
 
 type MaybePromise<T> = T | Promise<T>
+type FileContent = string | ArrayBuffer | Blob | Response
+
+
+async function convertFileContent(file: FileContent | URL): Promise<string | ArrayBuffer | URL> {
+    if (file instanceof Response || file instanceof Blob) {
+        if (file instanceof Response) {
+            const contentType = file.headers.get('content-type')
+            if (contentType?.startsWith('text/')) {
+                return await file.text()
+            }
+            file = await file.blob()
+        }
+        return await file.arrayBuffer()
+    }
+    return file
+
+}
 
 export async function loadSFCModule(
     mainfile: string,
     options?: {
         imports?: Record<string, any>;
-        files?: Array<{ filename: string, content: string }>;
-        getFile?: (path: string) => MaybePromise<string>;
+        files?: Array<{ filename: string, content: FileContent | URL }>;
+        getFile?: (path: string) => MaybePromise<FileContent | URL>;
         renderStyles?: (css: string) => MaybePromise<string>;
         catch?: (errors: Array<string | Error>) => MaybePromise<void>;
         fileConvertRule?: (file: File) => MaybePromise<void>;
@@ -108,9 +126,23 @@ export async function loadSFCModule(
         options.fileConvertRule = ensureAsync(options?.fileConvertRule)
     }
 
-    async function fileConvertRuleWithFile(file: File) {
+    async function fileConvertRuleWithFile(file: SFile) {
         if (options?.fileConvertRule) {
-            await options.fileConvertRule(file)
+            const tmpFile: File = {
+                filename: file.filename,
+                content: file.data.content,
+                language: file.data.language
+            }
+            if (file.isUnknown()) {
+                tmpFile.mimetype = file.data.mimetype
+            }
+            await options.fileConvertRule(tmpFile)
+            const diff: { content?: string | ArrayBuffer | URL, language?: string, mimetype?: string } = {}
+            if (tmpFile.content !== file.data.content) diff.content = tmpFile.content
+            if (tmpFile.language !== file.data.language) diff.language = tmpFile.language
+            if (tmpFile.language !== file.data.language) diff.language = tmpFile.language
+            if (file.isUnknown() && tmpFile.mimetype !== file.data.mimetype) diff.mimetype = tmpFile.mimetype
+            file.set(diff)
         }
         return file
     }
@@ -122,17 +154,24 @@ export async function loadSFCModule(
         }
     })
 
-    const store: Store = new Store(mainfile,
-        options?.files ? Object.fromEntries(options?.files.map(({ filename, content }) => [filename, new SFile(filename, content)])) : [] as any,
+    const files: SFile[] = options?.files ? 
+        await Promise.all(options?.files.map(async ({ filename, content }) => {
+            return new SFile(filename, await convertFileContent(content))
+        })) : [] as any
+
+    const filesMap: Record<string, SFile> = Object.fromEntries(files.map(file => [file.filename, file]))
+
+    const store: Store = new Store(mainfile, filesMap,
         options?.getFile ? async (filename: string, target: string) => {
             const content = await options.getFile!(target)
-            store.files[filename] = new SFile(filename, content)
+            store.files[filename] = new SFile(filename, await convertFileContent(content))
             await fileConvertRuleWithFile(store.files[filename])
             const errors = await compileFile(store, store.files[filename])
             if (errors.length > 0 && options?.catch) options.catch(errors)
             return store.files[filename]
         } : undefined
     )
+
 
     if (!store.files[mainfile]) {
         await store.getFile(mainfile, mainfile)
@@ -146,7 +185,7 @@ export async function loadSFCModule(
         })(file)
     ))
 
-    if (store.files[mainfile].language !== 'vue') {
+    if (store.files[mainfile].data.language !== 'vue') {
         throw new Error('Main file must be a .vue file or can be treated as a .vue file')
     }
     
