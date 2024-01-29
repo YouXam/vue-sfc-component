@@ -77,8 +77,7 @@ function registerModulesWithSystemJS(importMap: ImportMap) {
 }
 
 
-type MaybePromise<T> = T | Promise<T>
-type FileContent = string | ArrayBuffer | Blob | Response
+
 
 
 async function convertFileContent(file: FileContent | URL): Promise<string | ArrayBuffer | URL> {
@@ -96,11 +95,14 @@ async function convertFileContent(file: FileContent | URL): Promise<string | Arr
 
 }
 
-export async function loadSFCModule(
+
+type MaybePromise<T> = T | Promise<T>
+type FileContent = string | ArrayBuffer | Blob | Response
+export async function defineSFC(
     mainfile: string,
     options?: {
         imports?: Record<string, any>;
-        files?: Array<{ filename: string, content: FileContent | URL }>;
+        files?: Record<string, FileContent | URL>;
         getFile?: (path: string) => MaybePromise<FileContent | URL>;
         renderStyles?: (css: string) => MaybePromise<string>;
         catch?: (errors: Array<string | Error>) => MaybePromise<void>;
@@ -155,7 +157,7 @@ export async function loadSFCModule(
     })
 
     const files: SFile[] = options?.files ? 
-        await Promise.all(options?.files.map(async ({ filename, content }) => {
+        await Promise.all(Object.entries(options?.files).map(async ([filename, content]) => {
             return new SFile(filename, await convertFileContent(content))
         })) : [] as any
 

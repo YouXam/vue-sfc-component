@@ -36,12 +36,10 @@ yarn add vue-sfc-component
 
 ```js
 import { createApp, defineAsyncComponent } from 'vue'
-import { loadSFCModule } from 'vue-sfc-component';
+import { defineSFC } from 'vue-sfc-component';
 
-const files = [
-    {
-        filename: 'App.vue',
-        content: `
+const files = {
+    'App.vue': `
 <template>
     <div>
         <h1>{{ msg }}</h1>
@@ -61,12 +59,11 @@ h1 {
     color: red;
 }
 </style>`
-    }
-]
+}
 
 const app = createApp({
     components: {
-      'sfc-component': defineAsyncComponent(() => loadSFCModule('App.vue', { files })),
+      'sfc-component': defineAsyncComponent(() => defineSFC('App.vue', { files })),
     },
     template: `<sfc-component></sfc-component>`
 });
@@ -76,20 +73,22 @@ app.mount('#app')
 
 ### Advanced Usage
 
-`loadSFCModule` is the main function of `vue-sfc-component`. It takes a file path and returns a Promise that resolves to a Vue component. The function also accepts an optional configuration object that allows you to customize the component loading process.
+`defineSFC` is the main function of `vue-sfc-component`. It takes a file path and returns a Promise that resolves to a Vue component. The function also accepts an optional configuration object that allows you to customize the component loading process.
 
 ```ts
-export async function loadSFCModule(
+type MaybePromise<T> = T | Promise<T>;
+type FileContent = string | ArrayBuffer | Blob | Response;
+export async function defineSFC(
     mainfile: string,
     options?: {
         imports?: Record<string, any>;
-        files?: Array<{ filename: string, content: string }>;
-        getFile?: (path: string) => MaybePromise<string>;
+        files?: Record<string, FileContent | URL>;
+        getFile?: (path: string) => MaybePromise<FileContent | URL>;
         renderStyles?: (css: string) => MaybePromise<string>;
         catch?: (errors: Array<string | Error>) => MaybePromise<void>;
         fileConvertRule?: (file: File) => MaybePromise<void>;
     }
-) : Promise<Component>
+) : Promise<Component>;
 ```
 
 #### 1. Module Import
@@ -100,9 +99,8 @@ Here’s how you can use it:
 
 ```js 
 import * as _ from 'lodash'
-import { loadSFCModule } from 'vue-sfc-component';
 
-loadSFCModule('App.vue', {
+defineSFC('App.vue', {
     files,
     imports: {
         'lodash': _,
@@ -147,21 +145,18 @@ There are two approaches to utilize multi-file components:
 
 ```js
 // Approach 1: Using the `files` parameter
-loadSFCModule('App.vue', {
-    files: [
-        {
-            filename: 'App.vue',
-            content: `...`
-        }
+defineSFC('App.vue', {
+    files: {
+        'App.vue': "xxx"
         // ... other files
-    ]
+    }
 });
 ```
 
 ```js
 // Approach 2: Using the `getFile` callback
 
-loadSFCModule('App.vue', {
+defineSFC('App.vue', {
     async getFile(path) {
         const res = await fetch(path);
         return await res.text();
@@ -169,7 +164,7 @@ loadSFCModule('App.vue', {
 });
 ```
 
-These approaches can be mixed. The `files` array is checked first for the specified files, and if not found, the `getFile` callback is used to retrieve the file content.
+These approaches can be mixed. The `files` object is checked first for the specified files, and if not found, the `getFile` callback is used to retrieve the file content.
 
 ###### Handling Different Content Types in `files` and `getFile`
 
@@ -182,14 +177,11 @@ Here's how these types are handled:
 - **URL**: When a `URL` type is used, especially for file types like `vue`, `css`, `javascript`, `typescript`, or `json`, the library will utilize `fetch` to retrieve the content from the specified URL. This is particularly useful for loading content from external sources or APIs.
 
   ```js
-  loadSFCModule('App.vue', {
-      files: [
-          {
-              filename: 'App.vue',
-              content: new URL('http://example.com/path/to/your/App.vue')
-          }
-          // ... other files
-      ]
+  defineSFC('App.vue', {
+      files: {
+          'App.vue': new URL('http://example.com/path/to/your/App.vue')
+          // ... other files  
+      }
   });
   ```
 
@@ -237,7 +229,7 @@ JSON files are imported as objects, allowing you to use JSON data directly withi
 
 Other file types are exported as strings representing the URL of the file.
 
-The type of URL depends on the type of `content` provided. If `string`, `ArrayBuffer`, `Blob`, or `Response` is passed, it will be a `Blob URL`; if a `URL` type is provided, it will be that specific `URL`.
+The type of url depends on the type of file content you provide. If `string`, `ArrayBuffer`, `Blob`, or `Response` is passed, it will be a `Blob URL`. If a `URL` type is provided, it will be that specific `URL`.
 
 For example:
 
@@ -254,7 +246,7 @@ import b from './b.png' // 'b' is new URL('./b.png', window.location.href).toStr
 ```
 
 ```js
-loadSFCModule('App.vue', files, {
+defineSFC('App.vue', files, {
     async getFile(path) {
         if (path === './a.png') {
             return await fetch(path);
@@ -268,13 +260,12 @@ loadSFCModule('App.vue', files, {
 
 These functionalities provide a comprehensive and flexible system for handling various file types in Vue SFCs, enhancing the capability of your Vue applications.
 
-
 #### 3. Rendering Styles
 
 By default, `vue-sfc-component` automatically renders the component's styles into the `head` tag of the document. If you wish to customize the behavior of how styles are rendered, you can use the `renderStyles` parameter.
 
 ```js
-loadSFCModule('App.vue', {
+defineSFC('App.vue', {
     files,
     renderStyles(styles) {
         // 'styles' is a string containing all the component's styles
@@ -290,7 +281,7 @@ This function gives you full control over the style rendering process, allowing 
 By default, compilation errors are logged to the console. If you prefer to handle errors in a custom way, you can use the `catch` parameter.
 
 ```js
-loadSFCModule('App.vue', {
+defineSFC('App.vue', {
     files,
     catch(err) {
         // 'err' is an array containing errors, which can be either Error objects or strings
@@ -306,7 +297,7 @@ This feature is particularly useful for providing a better developer experience 
 If you have specific requirements that necessitate modifying file contents before compilation, you can achieve this using the `fileConvertRule` parameter.
 
 ```js
-loadSFCModule('App.vue', {
+defineSFC('App.vue', {
     files,
     fileConvertRule(file) {
         console.log(file.filename); 
