@@ -100,13 +100,16 @@ export async function defineSFC(
 `vue-sfc-component` 中的 `imports` 参数用于指定编译成的组件使用的依赖，可以使用现有的模块，也可以使用 URL 加载远程模块。
 
 ```js 
-import * as _ from 'lodash'
-
+import lodash from 'lodash'
+import * as axios from 'axios';
 defineSFC('App.vue', {
     files,
     imports: {
-        'lodash': _,
-        'moment': "https://esm.sh/moment"
+        lodash: {
+            default: lodash
+        },
+        axios,
+        moment: "https://esm.sh/moment"
     }
 });
 ```
@@ -114,11 +117,21 @@ defineSFC('App.vue', {
 然后在 SFC 中使用依赖：
 
 ```html
-<script setup>
+<script setup lang="ts">
 import _ from 'lodash'
 import moment from 'moment'
-console.log(_.VERSION)
+import axios, {isCancel, AxiosError} from 'axios'
+console.log(_.camelCase('hello world'))
 console.log(moment().format('MMMM Do YYYY, h:mm:ss a'))
+axios('https://jsonplaceholder.typicode.com/todos/1')
+    .then(console.log)
+    .catch((error: AxiosError) => {
+        if (isCancel(error)) {
+            console.log('Request canceled', error.message)
+        } else {
+            console.log(error)
+        }
+    })
 </script>
 ```
 

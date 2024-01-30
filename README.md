@@ -102,13 +102,16 @@ The `imports` parameter in `vue-sfc-component` enhances the module importing exp
 Here’s how you can use it:
 
 ```js 
-import * as _ from 'lodash'
-
+import lodash from 'lodash'
+import * as axios from 'axios';
 defineSFC('App.vue', {
     files,
     imports: {
-        'lodash': _,
-        'moment': "https://esm.sh/moment"
+        lodash: {
+            default: lodash
+        },
+        axios,
+        moment: "https://esm.sh/moment"
     }
 });
 ```
@@ -116,11 +119,21 @@ defineSFC('App.vue', {
 With this configuration, you can use imports in your SFCs like this:
 
 ```html
-<script setup>
+<script setup lang="ts">
 import _ from 'lodash'
 import moment from 'moment'
-console.log(_.VERSION)
+import axios, {isCancel, AxiosError} from 'axios'
+console.log(_.camelCase('hello world'))
 console.log(moment().format('MMMM Do YYYY, h:mm:ss a'))
+axios('https://jsonplaceholder.typicode.com/todos/1')
+    .then(console.log)
+    .catch((error: AxiosError) => {
+        if (isCancel(error)) {
+            console.log('Request canceled', error.message)
+        } else {
+            console.log(error)
+        }
+    })
 </script>
 ```
 

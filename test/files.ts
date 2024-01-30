@@ -1,5 +1,5 @@
-
-
+import lodash from 'lodash'
+import * as axios from 'axios';
 const files = {
     'App.vue': `
 <template>
@@ -11,9 +11,21 @@ const files = {
     </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import './main.css'
 import { ref } from 'vue'
+import _ from 'lodash'
+console.log(_.camelCase('hello world'))
+import axios, {isCancel, AxiosError} from 'axios'
+axios('https://jsonplaceholder.typicode.com/todos/1')
+    .then(console.log)
+    .catch((error: AxiosError) => {
+        if (isCancel(error)) {
+            console.log('Request canceled', error.message)
+        } else {
+            console.log(error)
+        }
+    })
 const msg = ref("Hello World!")
 </script>
 
@@ -34,5 +46,11 @@ h1 {
 }
 
 export default {
-    files
+    files,
+    imports: {
+        lodash: {
+            default: lodash
+        },
+        axios,
+    }
 }

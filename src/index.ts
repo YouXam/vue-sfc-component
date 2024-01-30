@@ -1,7 +1,6 @@
 import { Store, File as SFile } from './store'
 import { compileFile } from './transform'
 
-
 import { compileModules } from './moduleCompiler'
 
 import { Component } from 'vue'
@@ -38,11 +37,10 @@ declare global {
 }
 
 const systemjsKey = '__systemjs__'
+
 function getImportUrl(moduleName: string, moduleExports: any) {
     if (!globalThis[systemjsKey]) globalThis[systemjsKey] = {}
-    globalThis[systemjsKey][moduleName] = moduleExports[Symbol.toStringTag] === 'Module' ? moduleExports : {
-        default: moduleExports
-    }
+    globalThis[systemjsKey][moduleName] = moduleExports
     const src = 
         `System.register([], function($__export, $__moduleContext) {\n` +
         `    $__export(globalThis[${JSON.stringify(systemjsKey)}][${JSON.stringify(moduleName)}]);\n` +
@@ -53,32 +51,21 @@ function getImportUrl(moduleName: string, moduleExports: any) {
     return blobUrl
 }
 
+function walkImportMap(obj: Record<string, any>, importFn: (moduleName: string, moduleExports: any) => string) {
+    for (const [moduleName, moduleExports] of Object.entries(obj)) {
+        if (typeof moduleExports === 'string') continue
+        if (globalThis[systemjsKey]?.[moduleName]) delete obj[moduleName]
+         else obj[moduleName] = importFn(moduleName, moduleExports)
+    }
+} 
 function registerModulesWithSystemJS(importMap: ImportMap) {
-    function walk(obj: Record<string, any>) {
-        for (const [moduleName, moduleExports] of Object.entries(obj)) {
-            if (typeof moduleExports === 'string') continue
-            if (globalThis[systemjsKey]?.[moduleName]) delete obj[moduleName]
-             else obj[moduleName] = getImportUrl(moduleName, moduleExports)
-        }
-    } 
     if (importMap.imports) {
-        walk(importMap.imports)
+        walkImportMap(importMap.imports, getImportUrl)
+        System.addImportMap({
+            imports: importMap.imports,
+        });
     }
-    if (importMap.scopes) {
-        for (const scopeImports of Object.values(importMap.scopes)) {
-            walk(scopeImports)
-        }
-    }
-
-    System.addImportMap({
-        imports: importMap.imports,
-        scopes: importMap.scopes
-    });
 }
-
-
-
-
 
 async function convertFileContent(file: FileContent | URL): Promise<string | ArrayBuffer | URL> {
     if (file instanceof Response || file instanceof Blob) {
@@ -197,12 +184,12 @@ export async function defineSFC(
 
     await compileModules(store, async (type, src, _filename) => {
         if (type === 'css') {
-            // console.group(filename, "css")
+            // console.group(_filename, "css")
             // console.log(src)
             // console.groupEnd()
             css.push(src)
         } else {
-            // console.group(filename, "js")
+            // console.group(_filename, "js")
             // console.log(src)
             // console.groupEnd()
             const defineModule = await runInModule(src)
