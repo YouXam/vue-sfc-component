@@ -1,6 +1,6 @@
 {
   "name": "vue-sfc-component",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A library designed for compiling and mounting Vue Single File Components (SFCs) directly in the browser.",
   "repository": {
     "type": "git",
@@ -10,13 +10,14 @@
   "author": "YouXam",
   "license": "MIT",
   "dependencies": {
-    "@types/mime-db": "^1.43.5",
     "@vue/compiler-sfc": "^3.4.15",
     "hash-sum": "^2.0.0",
     "mime-db": "^1.52.0",
+    "postcss-value-parser": "^4.2.0",
     "sucrase": "^3.35.0",
     "systemjs": "^6.14.3",
-    "systemjs-babel": "^0.3.2"
+    "systemjs-babel": "^0.3.2",
+    "vue": "^3.4.15"
   },
   "type": "module",
   "scripts": {
@@ -29,10 +30,10 @@
   "devDependencies": {
     "@babel/types": "^7.23.9",
     "@types/hash-sum": "^1.0.2",
+    "@types/mime-db": "^1.43.5",
     "@types/systemjs": "^6.13.5",
     "@vitejs/plugin-vue": "^5.0.3",
     "typescript": "^5.3.3",
-    "vite": "^5.0.12",
-    "vue": "^3.4.15"
+    "vite": "^5.0.12"
   }
 }

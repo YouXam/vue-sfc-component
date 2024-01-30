@@ -18,7 +18,6 @@ export interface File {
 }
 
 
-
 async function runInModule(src: string) {
     const blob = new Blob([src], { type: 'text/javascript' });
     const blobUrl = URL.createObjectURL(blob);
@@ -125,7 +124,7 @@ export async function defineSFC(
     if (options) {
         options.getFile &&= ensureAsync(options?.getFile)
         options.renderStyles &&= ensureAsync(options?.renderStyles)
-        options.catch = ensureAsync(options?.catch) || console.error
+        options.catch = ensureAsync(options?.catch) || (async (errors: Array<Error | string>) => errors.forEach(e => console.error(e)))
         options.fileConvertRule = ensureAsync(options?.fileConvertRule)
     }
 
@@ -170,7 +169,7 @@ export async function defineSFC(
             store.files[filename] = new SFile(filename, await convertFileContent(content))
             await fileConvertRuleWithFile(store.files[filename])
             const errors = await compileFile(store, store.files[filename])
-            if (errors.length > 0 && options?.catch) options.catch(errors)
+            if (errors.length > 0 && options?.catch) await options.catch(errors)
             return store.files[filename]
         } : undefined
     )
@@ -196,9 +195,16 @@ export async function defineSFC(
 
     const css: string[] = []
 
-    await compileModules(store, async (type, src) => {
-        if (type === 'css') css.push(src)
-        else {
+    await compileModules(store, async (type, src, _filename) => {
+        if (type === 'css') {
+            // console.group(filename, "css")
+            // console.log(src)
+            // console.groupEnd()
+            css.push(src)
+        } else {
+            // console.group(filename, "js")
+            // console.log(src)
+            // console.groupEnd()
             const defineModule = await runInModule(src)
             await defineModule.default(
                 modules,
@@ -208,12 +214,15 @@ export async function defineSFC(
                 (key: string) => Promise.resolve(modules[key]),
                 async (moduleName: string) => {
                     return await System.import(moduleName)
+                },
+                (styles: string) => {
+                    css.push(styles)
                 }
             )
         }
     })
 
-    const styles = css.reverse().join('\\n')
+    const styles = css.reverse().join('\n')
     if (options?.renderStyles) await options?.renderStyles(styles)
     else {
         document.querySelectorAll('style[data-css-sfc]').forEach(el => el.remove())

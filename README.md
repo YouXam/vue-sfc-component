@@ -1,20 +1,24 @@
 # vue-sfc-component
 
+English | [简体中文](README_cn.md)
+
 ## Introduction
 
 `vue-sfc-component` is a library designed for compiling and mounting Vue Single File Components (SFCs) directly in the browser. It simplifies the process of rendering Vue components from various sources, making it ideal for quick prototyping and educational purposes.
 
 ## Features
 
-1. **Front-End Compilation**: This library allows you to compile SFCs into components directly in the browser. This feature is particularly useful for on-the-fly component rendering and simplifies the development process by eliminating the need for server-side compilation.
+1. **Front-End Compilation**: All compilations are completed in the browser, eliminating the need for a build step.
 
-2. **TypeScript and Setup Feature Support**: `vue-sfc-component` offering comprehensive support for TypeScript. To utilize TypeScript within your Vue SFCs, simply use the `<script lang="ts">` tag in your `.vue` files. Also, the library supports the `<script setup>` feature, which allows you to use the Composition API without the need for a build step.
+2. **TypeScript**: `vue-sfc-component` provides limited TypeScript support (does not check types, only removes type annotations). Simply use the `<script lang="ts">` tag in your `.vue` files or import `.ts` files.
 
-3. **Load Libraries from URLs**: Enhance your components by importing libraries directly from URLs. This feature offers the flexibility to include external scripts or styles without the hassle of managing them within your project structure.
+3. **Setup Feature**: Supports the `<script setup>` syntactic sugar.
 
-4. **Scoped CSS Support**: With Scoped CSS, you can ensure that your component styles are isolated and do not leak into the global scope. This is crucial for maintaining a clean and conflict-free styling environment.
+4. **Multiple Ways to Load Dependencies**: Allows compiled components to use dependencies from the current project or to directly load dependencies via URLs.
 
-5. **Seamless Integration with Existing Vue Projects**: `vue-sfc-component` is designed to integrate smoothly with your existing Vue projects. Its intuitive API and flexible configuration make it easy to embed within your current Vue setup, enhancing your project with minimal effort.
+5. **Scoped CSS Support**: You can use Scoped CSS to isolate component styles and prevent them from leaking into the global scope.
+
+6. **Seamless Integration with Existing Vue Projects**: `vue-sfc-component` can compile a series of files into a Vue component and use `defineAsyncComponent` for integration into existing Vue projects.
 
 ## Installation
 
@@ -73,7 +77,7 @@ app.mount('#app')
 
 ### Advanced Usage
 
-`defineSFC` is the main function of `vue-sfc-component`. It takes a file path and returns a Promise that resolves to a Vue component. The function also accepts an optional configuration object that allows you to customize the component loading process.
+`defineSFC` is the main function of `vue-sfc-component`. It takes a `*.vue` file name and then returns a Vue component. This function also accepts an optional configuration object, allowing you to customize the component loading process.
 
 ```ts
 type MaybePromise<T> = T | Promise<T>;
@@ -131,8 +135,6 @@ console.log(moment().format('MMMM Do YYYY, h:mm:ss a'))
 
 Please note, if you choose to import modules via URLs, the component will need to download the dependencies each time it is compiled, which can slow down the loading speed of the component.
 
-It's also important to remember that if a URL is specified in the `imports` but not used within the SFC, the dependency will not be downloaded. This feature is particularly useful for optimizing load times and avoiding unnecessary downloads.
-
 #### 2. Multi-File Support
 
 ##### 2.1. `files` and `getFile`
@@ -166,15 +168,13 @@ defineSFC('App.vue', {
 
 These approaches can be mixed. The `files` object is checked first for the specified files, and if not found, the `getFile` callback is used to retrieve the file content.
 
-###### Handling Different Content Types in `files` and `getFile`
+###### Use of different forms of file content
 
-The `vue-sfc-component` library is designed to handle a versatile range of content types for your components. When specifying the `content` in `files` or returning a value from `getFile`, you can use various types such as `string`, `ArrayBuffer`, `Blob`, `Response`, or even a `URL`.
+The type of file content can be `string`, `ArrayBuffer`, `Blob`, `Response`, or `URL`.
 
-Here's how these types are handled:
+- **`String`, `ArrayBuffer`, `Blob`, and `Response`**: These types are directly used as the content of your component files. 
 
-- **`String`, `ArrayBuffer`, `Blob`, and `Response`**: These types are directly used as the content of your component files. They provide flexibility in how you define or fetch your component's content.
-
-- **URL**: When a `URL` type is used, especially for file types like `vue`, `css`, `javascript`, `typescript`, or `json`, the library will utilize `fetch` to retrieve the content from the specified URL. This is particularly useful for loading content from external sources or APIs.
+- **URL**: For `vue`, `css`, `javascript`, `typescript` or `json`, the library will utilize `fetch` to retrieve the content from the specified URL. 
 
   ```js
   defineSFC('App.vue', {
@@ -199,13 +199,11 @@ import Foo from './Foo.vue'
 </script>
 ```
 
-This allows you to use other Vue components seamlessly within your SFC.
-
 ###### 2.2.2 js/ts
 
 Imports and exports for JavaScript and TypeScript files follow the ECMAScript module (ESM) standard.
 
-When using the `files` parameter with `.ts` or `.js` files, you can omit the file extension during imports. For example:
+When the imported files are in `files`, you can omit the file extension. For example:
 
 ```html
 <script setup>
@@ -215,11 +213,51 @@ import foo from './foo'
 
 The resolution order is: original filename > `foo.ts` > `foo.js`.
 
-However, when using the `getFile` approach, you must specify the file extension. This ensures that the correct file type is loaded and processed as expected.
+However, when using the `getFile` approach, you must specify the file extension.
 
-###### 2.2.3 css
+###### 2.2.3 CSS
 
-*TBD*
+To ensure CSS styles are properly processed and applied, explicit importation of CSS files is required. 
+
+**Importing CSS in Script Tag**
+
+You can import CSS files directly within the `<script setup>` tag. This approach applies the styles globally across your application.
+
+Example:
+
+```html
+<script setup>
+import './style.css'
+</script>
+```
+
+**Scoped CSS Import**
+
+For component-scoped styles, you should import CSS within a `<style scoped>` tag. Scoped styles ensure that CSS rules only apply to the current component, avoiding unwanted global side effects.
+
+Examples:
+
+```html
+<style scoped>
+@import './style.css';
+/* or */
+@import url('./style.css');
+/* or */
+@import './style.css' screen and (min-width: 500px);
+</style>
+```
+
+**Importing External CSS**
+
+You can also import CSS files hosted externally. However, when importing external CSS resources, you should do it within a `<style>` tag, as importing them in a `<script>` tag would treat them as JavaScript files.
+
+Example:
+
+```html
+<style>
+@import 'https://example.com/style.css';
+</style>
+```
 
 ###### 2.2.4 json
 
@@ -235,8 +273,8 @@ For example:
 
 ```html
 <script setup>
-import a from './a.png' // 'a' is a Blob URL
-import b from './b.png' // 'b' is new URL('./b.png', window.location.href).toString()
+import a from './a.png' // a is a Blob URL
+import b from './b.png' // b is new URL('./b.png', window.location.href).toString()
 </script>
 
 <template>
@@ -258,8 +296,6 @@ defineSFC('App.vue', files, {
 });
 ```
 
-These functionalities provide a comprehensive and flexible system for handling various file types in Vue SFCs, enhancing the capability of your Vue applications.
-
 #### 3. Rendering Styles
 
 By default, `vue-sfc-component` automatically renders the component's styles into the `head` tag of the document. If you wish to customize the behavior of how styles are rendered, you can use the `renderStyles` parameter.
@@ -273,9 +309,6 @@ defineSFC('App.vue', {
     }
 });
 ```
-
-This function gives you full control over the style rendering process, allowing for a more tailored integration into your application.
-
 #### 4. Handling Compilation Errors
 
 By default, compilation errors are logged to the console. If you prefer to handle errors in a custom way, you can use the `catch` parameter.
@@ -289,8 +322,6 @@ defineSFC('App.vue', {
     }
 });
 ```
-
-This feature is particularly useful for providing a better developer experience or integrating with custom logging systems.
 
 #### 5. Overriding Files
 
@@ -310,9 +341,6 @@ defineSFC('App.vue', {
     }
 });
 ```
-
-This functionality provides a way to programmatically alter the contents of a file before it's processed by `vue-sfc-component`, offering flexibility for advanced use-cases like pre-processing or conditional modifications.
-
 
 ## License
 

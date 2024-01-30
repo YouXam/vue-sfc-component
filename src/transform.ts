@@ -1,4 +1,4 @@
-import  { type File, type Store } from './store'
+import { type File, type Store } from './store'
 import type {
   BindingMetadata,
   CompilerOptions,
@@ -6,6 +6,11 @@ import type {
 } from 'vue/compiler-sfc'
 import { transform } from 'sucrase'
 import hashId from 'hash-sum'
+
+import { join } from './utils'
+
+import postcss from './libs/postcss/lib/postcss.mjs'
+import postcssImport from './libs/postcss-import/index.js'
 
 export const COMP_IDENTIFIER = `__sfc__`
 
@@ -32,7 +37,7 @@ export async function compileFile(
     return []
   }
 
-  let { data: { content }, filename,  compiled, finished } = file
+  let { data: { content }, filename, compiled, finished } = file
 
   const setFinished = (errors: (string | Error)[]) => {
     file.finished = true
@@ -44,7 +49,7 @@ export async function compileFile(
     content = await res.text()
   }
 
-  
+
   if (finished) {
     return []
   }
@@ -54,7 +59,52 @@ export async function compileFile(
 
   if (file.data.language === 'css') {
     compiled.css = content
-    return setFinished([])
+
+    function load(id: string, _: any) {
+      console.log("loading", id)
+      const file = store.files[id]
+      if (!file) {
+        throw new Error(`css can not import ${id} because it is not found`)
+      } else if (file.isUnknown()) {
+        throw new Error(`css can not import ${id}`)
+      } else if (file.data.language !== 'css') {
+        throw new Error(`css can not import ${id} because it is not css`)
+      } else if (file.data.content instanceof URL) {
+        async function get() {
+          const res = await fetch(file.data.content as URL)
+          return res.text()
+        }
+        return get()
+      } 
+      return Promise.resolve(file.data.content);
+    }
+
+
+    function resolve(id: string, base: string, _: any) {
+      return Promise.resolve(join(base, id));
+    }
+
+    const postcssError: any = []
+
+    function compileStyles(): Promise<string> {
+      return new Promise(res => {
+        postcss()
+          .use(postcssImport({
+            root: '.',
+            load,
+            resolve
+          }))
+          .process(content, { from: file.filename })
+          .then(result => res(result.css))
+          .catch(error => {
+            postcssError.push(error.toString())
+            res('')
+          });
+      })
+    }
+
+    compiled.css = await compileStyles();
+    return setFinished(postcssError)
   }
 
   if (file.data.language === 'javascript' || file.data.language === 'typescript') {
@@ -94,7 +144,7 @@ export async function compileFile(
   ) {
     return setFinished([
       `lang="x" pre-processors for <template> or <style> are currently not ` +
-        `supported.`,
+      `supported.`,
     ])
   }
 
@@ -238,7 +288,7 @@ export async function compileFile(
   } else {
     compiled.css = isCE
       ? (compiled.css =
-          '/* The component style of the custom element will be compiled into the component object */')
+        '/* The component style of the custom element will be compiled into the component object */')
       : '/* No <style> tags present */'
   }
 
@@ -248,8 +298,8 @@ export async function compileFile(
       : ''
     appendSharedCode(
       `\n${COMP_IDENTIFIER}.__file = ${JSON.stringify(filename)}` +
-        ceStyles +
-        `\nexport default ${COMP_IDENTIFIER}`,
+      ceStyles +
+      `\nexport default ${COMP_IDENTIFIER}`,
     )
     compiled.js = clientCode.trimStart()
   }

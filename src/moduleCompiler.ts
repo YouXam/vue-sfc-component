@@ -20,19 +20,9 @@ const staticImportKey = `__static_import__`
 const dynamicImportKey = `__dynamic_import__`
 const moduleKey = `__module__`
 
-export async function compileModules(store: Store, callback: (type: 'js' | 'css', src: string) => Promise<any>) {
+export async function compileModules(store: Store, callback: (type: 'js' | 'css', src: string, filename: string) => Promise<any>) {
     const seen = new Set<File>()
     await processFile(store, store.files[store.mainFile], seen, callback)
-
-
-    for (const filename in store.files) {
-        if (store.files[filename].data.language === 'css') {
-            const file = store.files[filename]
-            if (!seen.has(file)) {
-                await callback('css', file.compiled.css || '')
-            }
-        }
-    }
 }
 
 
@@ -40,7 +30,7 @@ async function processFile(
     store: Store,
     file: File,
     seen: Set<File>,
-    callback: (type: 'js' | 'css', src: string) => Promise<any>
+    callback: (type: 'js' | 'css', src: string, filename: string) => Promise<any>
 ) {
     if (!file) {
         throw new Error("file is empty")
@@ -53,24 +43,26 @@ async function processFile(
         code: js,
         importedFiles,
         hasDynamicImport,
+        filetype
     } = await processModule(
         store,
-        file.compiled.js || '',
-        file.filename,
+        file
     )
-    await processChildFiles(
-        store,
-        importedFiles,
-        hasDynamicImport,
-        seen,
-        callback
-    )
-    // append css
-    if (file.compiled.css) {
-        await callback('css', file.compiled.css)
+    if (filetype != 'css') {
+        await processChildFiles(
+            store,
+            importedFiles!,
+            hasDynamicImport!,
+            seen,
+            callback
+        )
     }
 
-    await callback('js', js)
+    if (file.compiled.css && file.data.language !== 'css') {
+        await callback('css', file.compiled.css, file.filename);
+    }
+
+    await callback('js', js, file.filename)
 }
 
 
@@ -79,7 +71,7 @@ async function processChildFiles(
     importedFiles: Set<string>,
     hasDynamicImport: boolean,
     seen: Set<File>,
-    callback: (type: 'js' | 'css', src: string) => Promise<any>
+    callback: (type: 'js' | 'css', src: string, filename: string) => Promise<any>
 ) {
     if (hasDynamicImport) {
         // process all files
@@ -96,7 +88,18 @@ async function processChildFiles(
 }
 
 
-async function processModule(store: Store, src: string, filename: string) {
+async function processModule(store: Store, file: File) {
+    if (file.data.language === 'css') {
+        return {
+            filetype: 'css',
+            code: `export default async function(_1, _2, _3, _4, addCss) { addCss(${JSON.stringify(file.compiled.css)}) }`
+        }
+    }
+    const src = file.compiled.js
+    if (!src) {
+        throw new Error(`Module ${file.filename} is empty`)
+    }
+    const filename = file.filename
     const s = new MagicString(src)
     const ast = babelParse(src, {
         sourceFilename: filename,
@@ -330,5 +333,6 @@ async function processModule(store: Store, src: string, filename: string) {
         code: s.toString(),
         importedFiles: importedFiles['local'],
         hasDynamicImport,
+        filetype: 'js'
     }
 }

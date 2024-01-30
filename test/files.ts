@@ -12,6 +12,7 @@ const files = {
 </template>
 
 <script setup>
+import './main.css'
 import { ref } from 'vue'
 const msg = ref("Hello World!")
 </script>
@@ -20,7 +21,16 @@ const msg = ref("Hello World!")
 h1 {
     color: red;
 }
-</style>`
+</style>`,
+    'main.css': `
+@import url('./files/part.css') screen and (min-width: 500px);
+h1 {
+    text-decoration: underline;
+}`,
+    'files/part.css': `
+h1 {
+    text-align: center;
+}`
 }
 
 export default {
