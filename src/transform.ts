@@ -9,7 +9,7 @@ import hashId from 'hash-sum'
 
 import { join } from './utils'
 
-import postcss from './libs/postcss/lib/postcss.mjs'
+import postcss from './libs/postcss/lib/postcss.js'
 import postcssImport from './libs/postcss-import/index.js'
 
 export const COMP_IDENTIFIER = `__sfc__`
@@ -61,7 +61,6 @@ export async function compileFile(
     compiled.css = content
 
     function load(id: string, _: any) {
-      console.log("loading", id)
       const file = store.files[id]
       if (!file) {
         throw new Error(`css can not import ${id} because it is not found`)
