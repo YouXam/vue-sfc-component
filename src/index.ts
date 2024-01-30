@@ -71,7 +71,11 @@ async function convertFileContent(file: FileContent | URL): Promise<string | Arr
     if (file instanceof Response || file instanceof Blob) {
         if (file instanceof Response) {
             const contentType = file.headers.get('content-type')
-            if (contentType?.startsWith('text/')) {
+            if (contentType?.startsWith('text/') 
+                || contentType?.startsWith('application/json')
+                || contentType?.startsWith('application/javascript')
+                || contentType?.startsWith('application/typescript')
+            ) {
                 return await file.text()
             }
             file = await file.blob()

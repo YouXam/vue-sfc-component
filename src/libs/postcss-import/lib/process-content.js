@@ -3,9 +3,6 @@
 // builtin tooling
 import * as path from "./path.js"
 
-// placeholder tooling
-let sugarss
-
 export default function processContent(
   result,
   content,
@@ -17,18 +14,6 @@ export default function processContent(
   const ext = path.extname(filename)
 
   const parserList = []
-
-  // SugarSS support:
-  if (ext === ".sss") {
-    if (!sugarss) {
-      /* c8 ignore next 3 */
-      try {
-        sugarss = require("sugarss")
-      } catch {} // Ignore
-    }
-    if (sugarss)
-      return runPostcss(postcss, content, filename, plugins, [sugarss])
-  }
 
   // Syntax support:
   if (result.opts.syntax?.parse) {
