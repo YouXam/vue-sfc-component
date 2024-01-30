@@ -6,6 +6,8 @@
 
 `vue-sfc-component` 是一个专为在浏览器中直接编译和挂载 Vue 单文件组件（SFC）而设计的库。
 
+[示例](https://stackblitz.com/edit/vitejs-vite-ggbwj7?file=src%2FApp.vue&terminal=dev)
+
 ## 特性
 
 1. **前端编译**：所有的编译都在浏览器中完成，无需构建步骤。

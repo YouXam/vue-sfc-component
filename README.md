@@ -6,6 +6,8 @@ English | [简体中文](README_cn.md)
 
 `vue-sfc-component` is a library designed for compiling and mounting Vue Single File Components (SFCs) directly in the browser. It simplifies the process of rendering Vue components from various sources, making it ideal for quick prototyping and educational purposes.
 
+[Live demo](https://stackblitz.com/edit/vitejs-vite-ggbwj7?file=src%2FApp.vue&terminal=dev)
+
 ## Features
 
 1. **Front-End Compilation**: All compilations are completed in the browser, eliminating the need for a build step.
