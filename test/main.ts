@@ -1,4 +1,3 @@
-import { createApp, defineAsyncComponent } from 'vue'
-import { defineSFC } from '../src';
-import options from './files';
-createApp(defineAsyncComponent(() => defineSFC('App.vue', options))).mount('#app')
+import { createApp } from 'vue'
+import App from './App.vue'
+createApp(App).mount('#app')

@@ -3,7 +3,7 @@ import { compileFile } from './transform'
 
 import { compileModules } from './moduleCompiler'
 
-import { Component } from 'vue'
+import { Component, defineComponent } from 'vue'
 import * as vue from 'vue'
 
 import 'systemjs'
@@ -95,7 +95,7 @@ export async function defineSFC(
         imports?: Record<string, any>;
         files?: Record<string, FileContent | URL>;
         getFile?: (path: string) => MaybePromise<FileContent | URL>;
-        renderStyles?: (css: string) => MaybePromise<string>;
+        renderStyles?: (css: string) => MaybePromise<(() => void)>;
         catch?: (errors: Array<string | Error>) => MaybePromise<void>;
         fileConvertRule?: (file: File) => MaybePromise<void>;
     }
@@ -213,12 +213,35 @@ export async function defineSFC(
         }
     })
 
-    const styles = css.reverse().join('\n')
-    if (options?.renderStyles) await options?.renderStyles(styles)
-    else {
-        document.querySelectorAll('style[data-css-sfc]').forEach(el => el.remove())
-        document.head.insertAdjacentHTML('beforeend', `<style data-css-sfc>${styles}</style>`)
-    }
 
-    return modules[store.mainFile].default as Component
+    const styles = css.reverse().join('\n')
+
+
+    let clearStyles: (() => void) = () => {
+        document.querySelectorAll('style[data-css-sfc]').forEach(el => el.remove())
+    }
+    let renderStyles: (css: string) => MaybePromise<(() => void)> = (s: string) => {
+        clearStyles()
+        document.head.insertAdjacentHTML('beforeend', `<style data-css-sfc>${s}</style>`)
+        return clearStyles
+    }
+    if (options?.renderStyles) {
+        renderStyles = options?.renderStyles
+        clearStyles = await renderStyles(styles)
+    }
+    const SFC: Component =  modules[store.mainFile].default
+    return defineComponent({
+        name: 'vue-sfc-component',
+        components: {
+            SFC
+        },
+        template: `<SFC />`,
+        beforeMount() {
+            clearStyles()
+            renderStyles(styles)
+        },
+        unmounted() {
+            clearStyles()
+        }
+    })
 }
