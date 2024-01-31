@@ -90,7 +90,7 @@ export async function defineSFC(
         imports?: Record<string, any>;
         files?: Record<string, FileContent | URL>;
         getFile?: (path: string) => MaybePromise<FileContent | URL>;
-        renderStyles?: (css: string) => MaybePromise<string>;
+        renderStyles?: (css: string) => MaybePromise<(() => void)>;
         catch?: (errors: Array<string | Error>) => MaybePromise<void>;
         fileConvertRule?: (file: File) => MaybePromise<void>;
     }
@@ -315,6 +315,9 @@ defineSFC('App.vue', {
     renderStyles(styles) {
         // 'styles' 是一个字符串，包含所有的样式
         // 你可能需要清除之前的样式
+        return () => {
+            // 在组件卸载时调用，可以在这里清除样式
+        }
     }
 });
 ```

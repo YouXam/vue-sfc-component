@@ -90,7 +90,7 @@ export async function defineSFC(
         imports?: Record<string, any>;
         files?: Record<string, FileContent | URL>;
         getFile?: (path: string) => MaybePromise<FileContent | URL>;
-        renderStyles?: (css: string) => MaybePromise<string>;
+        renderStyles?: (css: string) => MaybePromise<(() => void)>;
         catch?: (errors: Array<string | Error>) => MaybePromise<void>;
         fileConvertRule?: (file: File) => MaybePromise<void>;
     }
@@ -321,6 +321,10 @@ defineSFC('App.vue', {
     renderStyles(styles) {
         // 'styles' is a string containing all the component's styles
         // You can decide how to render these styles, but remember to clear previous styles if necessary
+        return () => {
+            // This function is called when the component is unmounted
+            // You can use this function to clear the styles you previously rendered
+        }
     }
 });
 ```
