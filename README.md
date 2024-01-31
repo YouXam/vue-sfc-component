@@ -77,7 +77,7 @@ const app = createApp({
 app.mount('#app')
 ```
 
-### Import About a Known Issue
+### Important: About a Known Issue
 
 In some cases, compiled components may lose reactivity. For example:
 
