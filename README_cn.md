@@ -77,6 +77,40 @@ const app = createApp({
 app.mount('#app')
 ```
 
+
+### 重要提示：已知问题
+
+某些情况下编译的组件可能会丧失响应性。例如:
+
+```html
+<template>
+    <button @click="reverse">{{ msg }}</button>
+</template>
+<script setup>
+import { ref } from 'vue'
+const msg = ref('Hello World!')
+const reverse = () => {
+    msg.value = msg.value.split('').reverse().join('')
+}
+</script>
+```
+
+这时点击按钮，函数会被调用，但按钮文本并未正确更新。
+
+这时需要手动导入 vue 并传递给 defineSFC 函数。
+
+```js
+import * as vue from 'vue'
+defineSFC('App.vue', {
+    files,
+    imports: {
+        vue
+    }
+});
+```
+
+目前还没有找到原因。
+
 ### 高级用法
 
 `defineSFC` 是 `vue-sfc-component` 的主要函数。它接收一个 `*.vue` 文件名，然后返回一个 Vue 组件。这个函数还接受一个可选的配置对象，允许你自定义组件加载过程。

@@ -77,6 +77,40 @@ const app = createApp({
 app.mount('#app')
 ```
 
+### Import About a Known Issue
+
+In some cases, compiled components may lose reactivity. For example:
+
+
+```html
+<template>
+    <button @click="reverse">{{ msg }}</button>
+</template>
+<script setup>
+import { ref } from 'vue'
+const msg = ref('Hello World!')
+const reverse = () => {
+    msg.value = msg.value.split('').reverse().join('')
+}
+</script>
+```
+
+At this time, clicking the button will call the function, but the button text does not update correctly.
+
+In this situation, it is necessary to manually import Vue and pass it to the defineSFC function.
+
+```js
+import * as vue from 'vue'
+defineSFC('App.vue', {
+    files,
+    imports: {
+        vue
+    }
+});
+```
+
+The reason for this issue has not yet been identified.
+
 ### Advanced Usage
 
 `defineSFC` is the main function of `vue-sfc-component`. It takes a `*.vue` file name and then returns a Vue component. This function also accepts an optional configuration object, allowing you to customize the component loading process.
