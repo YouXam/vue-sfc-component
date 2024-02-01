@@ -12,6 +12,8 @@ import { join } from './utils'
 import postcss from './libs/postcss/lib/postcss.js'
 import postcssImport from './libs/postcss-import/index.js'
 
+import { guessMimeType } from './store'
+
 export const COMP_IDENTIFIER = `__sfc__`
 
 async function transformTS(src: string) {
@@ -31,7 +33,7 @@ export async function compileFile(
       file.compiled.js = `export default ${JSON.stringify(file.data.content)}`
       return []
     }
-    const blob = new Blob([file.data.content], { type: 'text/javascript' })
+    const blob = new Blob([file.data.content], { type: guessMimeType(file.filename) })
     const url = URL.createObjectURL(blob)
     file.compiled.js = `export default ${JSON.stringify(url)}`
     return []

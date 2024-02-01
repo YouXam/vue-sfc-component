@@ -136,7 +136,7 @@ function guessFileType(filename: string): KnownFileType | UnknownFileType {
 }
 
 
-function guessMimeType(filename: string): string {
+export function guessMimeType(filename: string): string {
     const ext = filename.split('.').pop();
     return ext && lookup(ext) || 'application/octet-stream';
 }
