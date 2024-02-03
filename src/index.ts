@@ -20,7 +20,7 @@ export interface File {
 async function runInModule(src: string) {
     const blob = new Blob([src], { type: 'text/javascript' });
     const blobUrl = URL.createObjectURL(blob);
-    const module = await import(/* @vite-ignore */blobUrl)
+    const module = await System.import(/* @vite-ignore */blobUrl)
     return module
 }
 
@@ -30,10 +30,10 @@ type ImportMap = {
 };
 
 declare global {
-    var  __systemjs__: Record<string, any>;
-    var  __VUE_OPTIONS_API__: boolean;
-    var  __VUE_PROD_DEVTOOLS__: boolean;
-    var  __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: boolean;
+    var __systemjs__: Record<string, any>;
+    var __VUE_OPTIONS_API__: boolean;
+    var __VUE_PROD_DEVTOOLS__: boolean;
+    var __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: boolean;
 }
 
 const systemjsKey = '__systemjs__'
@@ -41,7 +41,7 @@ const systemjsKey = '__systemjs__'
 function getImportUrl(moduleName: string, moduleExports: any) {
     if (!globalThis[systemjsKey]) globalThis[systemjsKey] = {}
     globalThis[systemjsKey][moduleName] = moduleExports
-    const src = 
+    const src =
         `System.register([], function($__export, $__moduleContext) {\n` +
         `    $__export(globalThis[${JSON.stringify(systemjsKey)}][${JSON.stringify(moduleName)}]);\n` +
         `    return { execute: function() {} };\n` +
@@ -55,9 +55,9 @@ function walkImportMap(obj: Record<string, any>, importFn: (moduleName: string, 
     for (const [moduleName, moduleExports] of Object.entries(obj)) {
         if (typeof moduleExports === 'string') continue
         if (globalThis[systemjsKey]?.[moduleName]) delete obj[moduleName]
-         else obj[moduleName] = importFn(moduleName, moduleExports)
+        else obj[moduleName] = importFn(moduleName, moduleExports)
     }
-} 
+}
 function registerModulesWithSystemJS(importMap: ImportMap) {
     if (importMap.imports) {
         walkImportMap(importMap.imports, getImportUrl)
@@ -71,7 +71,7 @@ async function convertFileContent(file: FileContent | URL): Promise<string | Arr
     if (file instanceof Response || file instanceof Blob) {
         if (file instanceof Response) {
             const contentType = file.headers.get('content-type')
-            if (contentType?.startsWith('text/') 
+            if (contentType?.startsWith('text/')
                 || contentType?.startsWith('application/json')
                 || contentType?.startsWith('application/javascript')
                 || contentType?.startsWith('application/typescript')
@@ -98,13 +98,37 @@ export async function defineSFC(
         renderStyles?: (css: string) => MaybePromise<(() => void)>;
         catch?: (errors: Array<string | Error>) => MaybePromise<void>;
         fileConvertRule?: (file: File) => MaybePromise<void>;
+        cache?: boolean;
     }
-) : Promise<Component> {
+): Promise<Component> {
+
+    if ('caches' in window && (!options || options.cache !== false)) {
+        // @ts-ignore
+        const rawFetch = System.fetch;
+        // @ts-ignore
+        System.fetch = async function (url, options) {
+            if (url.startsWith('blob:')) {
+                return rawFetch(url, options);
+            }
+            const cacheName = 'vue-sfc-cache';
+            const cache = await caches.open(cacheName);
+            const cacheResponse = await cache.match(url);
+            if (cacheResponse) {
+                return cacheResponse;
+            } else {
+                const response = await rawFetch(url, options);
+                if (response.status === 200) {
+                    cache.put(url, response.clone());
+                }
+                return response;
+            }
+        };
+    } 
 
 
     function ensureAsync(fn?: (...arg: any) => any) {
         if (!fn) return
-        return async function(...arg: any) {
+        return async function (...arg: any) {
             const r = fn(...arg)
             if (r instanceof Promise) {
                 return await r
@@ -147,7 +171,7 @@ export async function defineSFC(
         }
     })
 
-    const files: SFile[] = options?.files ? 
+    const files: SFile[] = options?.files ?
         await Promise.all(Object.entries(options?.files).map(async ([filename, content]) => {
             return new SFile(filename, await convertFileContent(content))
         })) : [] as any
@@ -170,7 +194,7 @@ export async function defineSFC(
         await store.getFile(mainfile, mainfile)
     }
 
-    await Promise.all(Object.values(store.files).map(file => 
+    await Promise.all(Object.values(store.files).map(file =>
         (async (file: SFile) => {
             await fileConvertRuleWithFile(file)
             const errors = await compileFile(store, file)
@@ -181,7 +205,7 @@ export async function defineSFC(
     if (store.files[mainfile].data.language !== 'vue') {
         throw new Error('Main file must be a .vue file or can be treated as a .vue file')
     }
-    
+
     const modules: Record<string, any> = {}
 
     const css: string[] = []
@@ -203,9 +227,6 @@ export async function defineSFC(
                     Object.defineProperty(mod, key, { enumerable: true, configurable: true, get })
                 },
                 (key: string) => Promise.resolve(modules[key]),
-                async (moduleName: string) => {
-                    return await System.import(moduleName)
-                },
                 (styles: string) => {
                     css.push(styles)
                 }
@@ -229,7 +250,7 @@ export async function defineSFC(
         renderStyles = options?.renderStyles
         clearStyles = await renderStyles(styles)
     }
-    const SFC: Component =  modules[store.mainFile].default
+    const SFC: Component = modules[store.mainFile].default
     return defineComponent({
         name: 'vue-sfc-component',
         components: {

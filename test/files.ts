@@ -16,6 +16,11 @@ const files = {
 import './main.css'
 import { ref } from 'vue'
 import Home from './home.svg'
+
+import moment from 'https://esm.sh/moment'
+import lodash from 'https://esm.sh/lodash'
+
+console.log(moment, lodash)
 const msg = ref("Hello World!")
 </script>
 

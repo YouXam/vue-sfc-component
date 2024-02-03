@@ -127,6 +127,7 @@ export async function defineSFC(
         renderStyles?: (css: string) => MaybePromise<(() => void)>;
         catch?: (errors: Array<string | Error>) => MaybePromise<void>;
         fileConvertRule?: (file: File) => MaybePromise<void>;
+        cache?: boolean;
     }
 ) : Promise<Component>;
 ```
@@ -182,7 +183,17 @@ console.log(moment().format('MMMM Do YYYY, h:mm:ss a'))
 </script>
 ```
 
-Please note, if you choose to import modules via URLs, the component will need to download the dependencies each time it is compiled, which can slow down the loading speed of the component.
+Note that if you choose to import the module via URL, it will be cached locally by default. If you want to disable caching, you can set cache to false.
+
+```js
+defineSFC('App.vue', {
+    files,
+    imports: {
+        moment: "https://esm.sh/moment"
+    },
+    cache: false
+});
+```
 
 #### 2. Multi-File Support
 

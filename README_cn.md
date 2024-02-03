@@ -127,6 +127,7 @@ export async function defineSFC(
         renderStyles?: (css: string) => MaybePromise<(() => void)>;
         catch?: (errors: Array<string | Error>) => MaybePromise<void>;
         fileConvertRule?: (file: File) => MaybePromise<void>;
+        cache?: boolean;
     }
 ) : Promise<Component>;
 ```
@@ -180,7 +181,17 @@ console.log(moment().format('MMMM Do YYYY, h:mm:ss a'))
 </script>
 ```
 
-请注意，如果您选择通过 URL 导入模块，组件在每次编译时都需要下载依赖项，这可能会降低组件的加载速度。
+请注意，如果您选择通过 URL 导入模块，默认情况下会缓存在本地，如果想要禁用缓存，可以设置 `cache` 为 `false`。
+
+```js
+defineSFC('App.vue', {
+    files,
+    imports: {
+        moment: "https://esm.sh/moment"
+    },
+    cache: false
+});
+```
 
 #### 2. 多文件支持
 

@@ -16,7 +16,6 @@ import { join, dirname } from './utils'
 
 const modulesKey = `__sfc_modules__`
 const exportKey = `__sfc_export__`
-const staticImportKey = `__static_import__`
 const dynamicImportKey = `__dynamic_import__`
 const moduleKey = `__module__`
 
@@ -92,7 +91,7 @@ async function processModule(store: Store, file: File) {
     if (file.data.language === 'css') {
         return {
             filetype: 'css',
-            code: `export default async function(_1, _2, _3, _4, addCss) { addCss(${JSON.stringify(file.compiled.css)}) }`
+            code: `export default async function(_1, _2, _3, addCss) { addCss(${JSON.stringify(file.compiled.css)}) }`
         }
     }
     const src = file.compiled.js
@@ -137,32 +136,21 @@ async function processModule(store: Store, file: File) {
             importToIdMap[importType].set(name, id)
             return id;
         }
-        if (source.startsWith('./') || source.startsWith('../')) {
-            const resolvedPath = join(dirname(pathname), source)
-            let filename = resolveImport(resolvedPath)
-            if (!filename) {
-                filename = resolvedPath
-                await store.getFile(filename, source)
-            }
-            if (importedFiles['local'].has(filename)) {
-                return importToIdMap['local'].get(filename)!
-            }
-            const id = addImport('local', filename)
-            s.appendLeft(
-                node.start!,
-                `const ${id} = ${modulesKey}[${JSON.stringify(filename)}]\n`,
-            )
-            return id;
+        const resolvedPath = join(dirname(pathname), source)
+        let filename = resolveImport(resolvedPath)
+        if (!filename) {
+            filename = resolvedPath
+            await store.getFile(filename, source)
         }
-        if (importedFiles['other'].has(source)) {
-            return importToIdMap['other'].get(source)!
+        if (importedFiles['local'].has(filename)) {
+            return importToIdMap['local'].get(filename)!
         }
-        const id = addImport('other', source)
+        const id = addImport('local', filename)
         s.appendLeft(
             node.start!,
-            `const ${id} = await ${staticImportKey}(${JSON.stringify(source)})\n`,
+            `const ${id} = ${modulesKey}[${JSON.stringify(filename)}]\n`,
         )
-        return id
+        return id;
         
     }
 
@@ -172,7 +160,7 @@ async function processModule(store: Store, file: File) {
 
     // 0. instantiate module
     s.prepend(
-        `\n\nexport default async function(${modulesKey}, ${exportKey}, ${dynamicImportKey}, ${staticImportKey}) {\n` +
+        `\n\nexport default async function(${modulesKey}, ${exportKey}, ${dynamicImportKey}) {\n` +
         `const ${moduleKey} = ${modulesKey}[${JSON.stringify(filename)}] = { [Symbol.toStringTag]: "Module" }\n\n`,
     )
 
@@ -182,21 +170,27 @@ async function processModule(store: Store, file: File) {
         // import { baz } from 'foo' --> baz -> __import_foo__.baz
         // import * as ok from 'foo' --> ok -> __import_foo__
         if (node.type === 'ImportDeclaration') {
-            const importId = await defineImport(node, node.source.value, filename)
-            for (const spec of node.specifiers) {
-                if (spec.type === 'ImportSpecifier') {
-                    idToImportMap.set(
-                        spec.local.name,
-                        `${importId}.${(spec.imported as Identifier).name}`,
-                    )
-                } else if (spec.type === 'ImportDefaultSpecifier') {
-                    idToImportMap.set(spec.local.name, `${importId}.default`)
-                } else {
-                    // namespace specifier
-                    idToImportMap.set(spec.local.name, importId)
+            const source = node.source.value
+            if (source.startsWith('./') || source.startsWith('../')) {
+                const importId = await defineImport(node, node.source.value, filename)
+                for (const spec of node.specifiers) {
+                    if (spec.type === 'ImportSpecifier') {
+                        idToImportMap.set(
+                            spec.local.name,
+                            `${importId}.${(spec.imported as Identifier).name}`,
+                        )
+                    } else if (spec.type === 'ImportDefaultSpecifier') {
+                        idToImportMap.set(spec.local.name, `${importId}.default`)
+                    } else {
+                        // namespace specifier
+                        idToImportMap.set(spec.local.name, importId)
+                    }
                 }
+                s.remove(node.start!, node.end!)
+            } else {
+                s.prepend(src.slice(node.start!, node.end!) + '\n')
+                s.remove(node.start!, node.end!)
             }
-            s.remove(node.start!, node.end!)
         }
     }
 
