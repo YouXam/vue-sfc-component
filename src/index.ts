@@ -222,6 +222,9 @@ export async function defineSFC(
                     Object.defineProperty(mod, key, { enumerable: true, configurable: true, get })
                 },
                 async (key: string) => {
+                    if (!(key.startsWith('.') || key.startsWith('..') || key.startsWith('/'))) {
+                        return (await runInModule(`export default import(${JSON.stringify(key)})`)).default
+                    }
                     if (modules[key]) return modules[key]
                     await store.getFile(key, key)
                     await compileModules(seen, store, compile_callback, key)

@@ -291,21 +291,8 @@ async function processModule(store: Store, file: File) {
     walk(ast, {
         enter(node: Node, parent: Node) {
             if (node.type === 'Import' && parent.type === 'CallExpression') {
-                const arg = parent.arguments[0]
-                if (arg.type === 'StringLiteral' && (arg.value.startsWith('./') || arg.value.startsWith('../'))) {
-                    hasDynamicImport = true
-                    s.overwrite(node.start!, node.start! + 6, dynamicImportKey)
-                    const name = join(dirname(filename), arg.value)
-                    let importFilename = resolveImport(name)
-                    if (!importFilename) {
-                        importFilename = name
-                    }
-                    s.overwrite(
-                        arg.start!,
-                        arg.end!,
-                        JSON.stringify(importFilename),
-                    )
-                }
+                hasDynamicImport = true
+                s.overwrite(node.start!, node.start! + 6, dynamicImportKey)
             }
         },
     })

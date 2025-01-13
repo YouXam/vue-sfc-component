@@ -24,7 +24,8 @@ import lodash from 'https://esm.sh/lodash'
 console.log(moment, lodash)
 const msg = ref("Hello World!")
 const Home = ref('')
-import('./home.svg').then(({ default: src }) => Home.value = src)
+import('./' + 'home.svg').then(({ default: src }) => Home.value = src)
+import('vue').then(vue => console.log(vue.ref))
 </script>
 
 <style scoped>
