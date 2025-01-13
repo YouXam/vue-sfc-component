@@ -8,6 +8,7 @@ import * as vue from 'vue'
 
 import 'systemjs'
 import 'systemjs-babel'
+import { dirname, join } from './utils'
 
 export interface File {
     filename: string;
@@ -211,7 +212,7 @@ export async function defineSFC(
     const css: string[] = []
     const seen = new Set<SFile>()
 
-    async function compile_callback(type: string, src: string, _filename: string)  {
+    async function compile_callback(type: string, src: string, filename: string)  {
         if (type === 'css') {
             css.push(src)
         } else {
@@ -225,10 +226,11 @@ export async function defineSFC(
                     if (!(key.startsWith('.') || key.startsWith('..') || key.startsWith('/'))) {
                         return (await runInModule(`export default import(${JSON.stringify(key)})`)).default
                     }
-                    if (modules[key]) return modules[key]
-                    await store.getFile(key, key)
-                    await compileModules(seen, store, compile_callback, key)
-                    return modules[key]
+                    const path = join(dirname(filename), key)
+                    if (modules[path]) return modules[path]
+                    await store.getFile(path, path)
+                    await compileModules(seen, store, compile_callback, path)
+                    return modules[path]
                 },
                 (styles: string) => {
                     css.push(styles)

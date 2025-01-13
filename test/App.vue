@@ -23,10 +23,13 @@ const sfc = defineAsyncComponent(() => defineSFC('md/App.vue', {
     files,
     async getFile(name) {
         console.log('loading', name)
-        if (name.endsWith('.css')) return css
-        if (name.endsWith('.js')) return js
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        return svg
+        if (name === 'md/main.css') return css
+        if (name === 'config.js') return js
+        if (name === 'md/home.svg') {
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            return svg
+        }
+        throw new Error('File not found')
     },
 }))
 </script>
