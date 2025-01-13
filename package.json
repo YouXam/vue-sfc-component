@@ -1,6 +1,6 @@
 {
   "name": "vue-sfc-component",
-  "version": "0.0.14",
+  "version": "0.0.16",
   "description": "A library designed for compiling and mounting Vue Single File Components (SFCs) directly in the browser.",
   "repository": {
     "type": "git",

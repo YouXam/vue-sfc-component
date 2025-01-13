@@ -40,7 +40,6 @@ async function processFile(
     let {
         code: js,
         importedFiles,
-        hasDynamicImport,
         filetype
     } = await processModule(
         store,
@@ -50,7 +49,6 @@ async function processFile(
         await processChildFiles(
             store,
             importedFiles!,
-            hasDynamicImport!,
             seen,
             callback
         )
@@ -67,17 +65,10 @@ async function processFile(
 async function processChildFiles(
     store: Store,
     importedFiles: Set<string>,
-    hasDynamicImport: boolean,
     seen: Set<File>,
     callback: (type: 'js' | 'css', src: string, filename: string) => Promise<any>
 ) {
-    if (hasDynamicImport) {
-        // process all files
-        for (const file of Object.values(store.files)) {
-            if (seen.has(file)) continue
-            await processFile(store, file, seen, callback)
-        }
-    } else if (importedFiles.size > 0) {
+    if (importedFiles.size > 0) {
         // crawl child imports
         for (const imported of importedFiles) {
             await processFile(store, store.files[imported], seen, callback)
@@ -308,7 +299,6 @@ async function processModule(store: Store, file: File) {
                     let importFilename = resolveImport(name)
                     if (!importFilename) {
                         importFilename = name
-                        store.getFile(name, arg.value)
                     }
                     s.overwrite(
                         arg.start!,

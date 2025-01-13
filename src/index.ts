@@ -179,8 +179,8 @@ export async function defineSFC(
     const filesMap: Record<string, SFile> = Object.fromEntries(files.map(file => [file.filename, file]))
 
     const store: Store = new Store(mainfile, filesMap,
-        options?.getFile ? async (filename: string, target: string) => {
-            const content = await options.getFile!(target)
+        options?.getFile ? async (filename: string, _target: string) => {
+            const content = await options.getFile!(filename)
             store.files[filename] = new SFile(filename, await convertFileContent(content))
             await fileConvertRuleWithFile(store.files[filename])
             const errors = await compileFile(store, store.files[filename])
@@ -213,14 +213,8 @@ export async function defineSFC(
 
     async function compile_callback(type: string, src: string, _filename: string)  {
         if (type === 'css') {
-            // console.group(_filename, "css")
-            // console.log(src)
-            // console.groupEnd()
             css.push(src)
         } else {
-            // console.group(_filename, "js")
-            // console.log(src)
-            // console.groupEnd()
             const defineModule = await runInModule(src)
             await defineModule.default(
                 modules,
@@ -228,6 +222,7 @@ export async function defineSFC(
                     Object.defineProperty(mod, key, { enumerable: true, configurable: true, get })
                 },
                 async (key: string) => {
+                    if (modules[key]) return modules[key]
                     await store.getFile(key, key)
                     await compileModules(seen, store, compile_callback, key)
                     return modules[key]

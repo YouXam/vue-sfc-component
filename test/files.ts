@@ -1,5 +1,5 @@
 export const files = {
-    'App.vue': `
+    'md/App.vue': `
 <template>
     <div>
         <h1>{{ msg }}</h1>
@@ -8,11 +8,14 @@ export const files = {
         </button>
 
         <img :src="Home" style="max-height: 100px; display: block;"/>
+
+        <pre><code>{{ JSON.stringify(config, null, 2) }}</code></pre>
     </div>
 </template>
 
 <script setup lang="ts">
 import './main.css'
+import { config } from '../config.js'
 import { ref } from 'vue'
 
 import moment from 'https://esm.sh/moment'
@@ -29,13 +32,8 @@ h1 {
     color: red;
 }
 </style>`,
-    'main.css': `
-@import url('./files/part.css') screen and (min-width: 500px);
+    'md/files/part.css': `
 h1 {
-    text-decoration: underline;
-}`,
-    'files/part.css': `
-h1 {
-    text-align: center;
+    text-align: right;
 }`
 }
