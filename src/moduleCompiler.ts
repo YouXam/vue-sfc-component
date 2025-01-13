@@ -19,9 +19,8 @@ const exportKey = `__sfc_export__`
 const dynamicImportKey = `__dynamic_import__`
 const moduleKey = `__module__`
 
-export async function compileModules(store: Store, callback: (type: 'js' | 'css', src: string, filename: string) => Promise<any>) {
-    const seen = new Set<File>()
-    await processFile(store, store.files[store.mainFile], seen, callback)
+export async function compileModules(seen: Set<File>, store: Store, callback: (type: 'js' | 'css', src: string, filename: string) => Promise<any>, mainFile?: string) {
+    await processFile(store, store.files[mainFile ?? store.mainFile], seen, callback)
 }
 
 

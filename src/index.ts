@@ -209,8 +209,9 @@ export async function defineSFC(
     const modules: Record<string, any> = {}
 
     const css: string[] = []
+    const seen = new Set<SFile>()
 
-    await compileModules(store, async (type, src, _filename) => {
+    async function compile_callback(type: string, src: string, _filename: string)  {
         if (type === 'css') {
             // console.group(_filename, "css")
             // console.log(src)
@@ -226,13 +227,19 @@ export async function defineSFC(
                 (mod: any, key: string, get: any) => {
                     Object.defineProperty(mod, key, { enumerable: true, configurable: true, get })
                 },
-                (key: string) => Promise.resolve(modules[key]),
+                async (key: string) => {
+                    await store.getFile(key, key)
+                    await compileModules(seen, store, compile_callback, key)
+                    return modules[key]
+                },
                 (styles: string) => {
                     css.push(styles)
                 }
             )
         }
-    })
+    }
+
+    await compileModules(seen, store, compile_callback)
 
 
     const styles = css.reverse().join('\n')
