@@ -243,14 +243,13 @@ export async function defineSFC(
 
 
     const styles = css.reverse().join('\n')
-
-
+    const randomId = Math.random().toString(36).slice(2)
     let clearStyles: (() => void) = () => {
-        document.querySelectorAll('style[data-css-sfc]').forEach(el => el.remove())
+        document.querySelectorAll(`style[data-css-sfc-${randomId}]`).forEach(el => el.remove())
     }
     let renderStyles: (css: string) => MaybePromise<(() => void)> = (s: string) => {
         clearStyles()
-        document.head.insertAdjacentHTML('beforeend', `<style data-css-sfc>${s}</style>`)
+        document.head.insertAdjacentHTML('beforeend', `<style data-css-sfc-${randomId}>${s}</style>`)
         return clearStyles
     }
     if (options?.renderStyles) {

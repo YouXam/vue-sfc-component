@@ -1,5 +1,6 @@
 <template>
     <sfc />
+    <sfc2 />
 </template>
 
 <script setup>
@@ -14,22 +15,31 @@ h1 {
     text-decoration: underline;
 }`
 const js = `
-export const config = {
-    name: 'test',
-    version: '1.0.0',
+export class Name {
+    constructor() {
+        console.log('Name')
+    }
 }
 `
+
+
 const sfc = defineAsyncComponent(() => defineSFC('md/App.vue', {
     files,
     async getFile(name) {
         console.log('loading', name)
         if (name === 'md/main.css') return css
-        if (name === 'config.js') return js
+        if (name === 'class.js') return js
         if (name === 'md/home.svg') {
             await new Promise(resolve => setTimeout(resolve, 1000))
             return svg
         }
         throw new Error('File not found')
     },
+}))
+const sfc2 = defineAsyncComponent(() => defineSFC('App.vue', {
+    files: {
+        'App.vue': `<template><div>App</div></template>
+        <style scoped>div { color: red }</style>`
+    }
 }))
 </script>

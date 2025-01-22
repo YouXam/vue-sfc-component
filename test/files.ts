@@ -15,12 +15,13 @@ export const files = {
 
 <script setup lang="ts">
 import './main.css'
-import { config } from '../config.js'
+import { Name } from '../class.js'
 import { ref } from 'vue'
 
 import moment from 'https://esm.sh/moment'
 import lodash from 'https://esm.sh/lodash'
 
+new Name()
 console.log(moment, lodash)
 const msg = ref("Hello World!")
 const Home = ref('')
