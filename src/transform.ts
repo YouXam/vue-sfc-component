@@ -60,64 +60,61 @@ export async function compileFile(
     return setFinished([])
   }
 
-  if (file.data.language === 'css') {
-    compiled.css = content
+  async function load(id: string, _: any) {
+    await store.getFile(id, id)
+    const file = store.files[id]
+    if (!file) {
+      throw new Error(`css can not import ${id} because it is not found`)
+    } else if (file.isUnknown()) {
+      throw new Error(`css can not import ${id}`)
+    } else if (file.data.language !== 'css') {
+      throw new Error(`css can not import ${id} because it is not css`)
+    } else if (file.data.content instanceof URL) {
+      const res = await fetch(file.data.content as URL)
+      return res.text()
+    } 
+    return file.data.content;
+  }
 
-    async function load(id: string, _: any) {
-      await store.getFile(id, id)
-      const file = store.files[id]
-      if (!file) {
-        throw new Error(`css can not import ${id} because it is not found`)
-      } else if (file.isUnknown()) {
-        throw new Error(`css can not import ${id}`)
-      } else if (file.data.language !== 'css') {
-        throw new Error(`css can not import ${id} because it is not css`)
-      } else if (file.data.content instanceof URL) {
-        const res = await fetch(file.data.content as URL)
-        return res.text()
-      } 
-      return file.data.content;
-    }
+  function resolve(id: string, base: string, _: any) {
+    return Promise.resolve(join(base, id));
+  }
 
+  const postcssError: any = []
 
-    function resolve(id: string, base: string, _: any) {
-      return Promise.resolve(join(base, id));
-    }
-
-    const postcssError: any = []
-
-    function compileStyles(): Promise<string> {
-      return new Promise(res => {
-        postcss()
-          .use(postcssImport({
-            root: '.',
-            load,
-            resolve
-          }))
-          .use(postcssUrl(async (url) => {
-            if (url.startsWith('./') || url.startsWith('../') || url.startsWith('/')) {
-              const resolved = join(filename, '..', url)
-              const newFile = await store.getFile(resolved, resolved)
-              const content = newFile.data.content
-              if (typeof content === 'string' || content instanceof ArrayBuffer) {
-                const blob = new Blob([content], { type: guessMimeType(newFile.filename) })
-                const blobUrl = URL.createObjectURL(blob)
-                return blobUrl
-              }
-              return content.toString()
+  function compileStyles(content: string): Promise<string> {
+    return new Promise(res => {
+      postcss()
+        .use(postcssImport({
+          root: '.',
+          load,
+          resolve
+        }))
+        .use(postcssUrl(async (url) => {
+          if (url.startsWith('./') || url.startsWith('../') || url.startsWith('/')) {
+            const resolved = join(filename, '..', url)
+            const newFile = await store.getFile(resolved, resolved)
+            const content = newFile.data.content
+            if (typeof content === 'string' || content instanceof ArrayBuffer) {
+              const blob = new Blob([content], { type: guessMimeType(newFile.filename) })
+              const blobUrl = URL.createObjectURL(blob)
+              return blobUrl
             }
-            return url
-          }))
-          .process(content, { from: file.filename })
-          .then(result => res(result.css))
-          .catch(error => {
-            postcssError.push(error.toString())
-            res('')
-          });
-      })
-    }
+            return content.toString()
+          }
+          return url
+        }))
+        .process(content, { from: file.filename })
+        .then(result => res(result.css))
+        .catch(error => {
+          postcssError.push(error.toString())
+          res('')
+        });
+    })
+  }
 
-    compiled.css = await compileStyles();
+  if (file.data.language === 'css') {
+    compiled.css = await compileStyles(content);
     return setFinished(postcssError)
   }
 
@@ -275,7 +272,7 @@ export async function compileFile(
   let styles: string[] = []
   for (const style of descriptor.styles) {
     if (style.module) {
-      return setFinished([`<style module> is not supported in the playground.`])
+      return setFinished([`<style module> is not supported.`])
     }
 
     const styleResult = await store.compiler.compileStyleAsync({
@@ -298,7 +295,7 @@ export async function compileFile(
     }
   }
   if (css) {
-    compiled.css = css.trim()
+    compiled.css = await compileStyles(css);
   } else {
     compiled.css = isCE
       ? (compiled.css =
@@ -318,7 +315,7 @@ export async function compileFile(
     compiled.js = clientCode.trimStart()
   }
 
-  return setFinished([])
+  return setFinished(postcssError)
 }
 
 async function doCompileScript(

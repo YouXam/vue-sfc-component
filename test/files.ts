@@ -14,7 +14,6 @@ export const files = {
 </template>
 
 <script setup lang="ts">
-import './main.css'
 import { ref } from 'vue'
 
 import moment from 'https://esm.sh/moment'
@@ -28,8 +27,11 @@ import('vue').then(vue => console.log(vue.ref))
 </script>
 
 <style scoped>
+@import url('./files/part.css');
 h1 {
     color: red;
+    text-decoration: underline;
+    background: url('./home.svg');
 }
 </style>`
 }
