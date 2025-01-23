@@ -11,6 +11,7 @@ import { join } from './utils'
 
 import postcss from './libs/postcss/lib/postcss.js'
 import postcssImport from './libs/postcss-import/index.js'
+import postcssUrl from './libs/postcss-url/index.js'
 
 import { guessMimeType } from './store'
 
@@ -62,7 +63,8 @@ export async function compileFile(
   if (file.data.language === 'css') {
     compiled.css = content
 
-    function load(id: string, _: any) {
+    async function load(id: string, _: any) {
+      await store.getFile(id, id)
       const file = store.files[id]
       if (!file) {
         throw new Error(`css can not import ${id} because it is not found`)
@@ -71,13 +73,10 @@ export async function compileFile(
       } else if (file.data.language !== 'css') {
         throw new Error(`css can not import ${id} because it is not css`)
       } else if (file.data.content instanceof URL) {
-        async function get() {
-          const res = await fetch(file.data.content as URL)
-          return res.text()
-        }
-        return get()
+        const res = await fetch(file.data.content as URL)
+        return res.text()
       } 
-      return Promise.resolve(file.data.content);
+      return file.data.content;
     }
 
 
@@ -94,6 +93,20 @@ export async function compileFile(
             root: '.',
             load,
             resolve
+          }))
+          .use(postcssUrl(async (url) => {
+            if (url.startsWith('./') || url.startsWith('../') || url.startsWith('/')) {
+              const resolved = join(filename, '..', url)
+              const newFile = await store.getFile(resolved, resolved)
+              const content = newFile.data.content
+              if (typeof content === 'string' || content instanceof ArrayBuffer) {
+                const blob = new Blob([content], { type: guessMimeType(newFile.filename) })
+                const blobUrl = URL.createObjectURL(blob)
+                return blobUrl
+              }
+              return content.toString()
+            }
+            return url
           }))
           .process(content, { from: file.filename })
           .then(result => res(result.css))

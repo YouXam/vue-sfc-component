@@ -84,7 +84,6 @@ async function convertFileContent(file: FileContent | URL): Promise<string | Arr
         return await file.arrayBuffer()
     }
     return file
-
 }
 
 
